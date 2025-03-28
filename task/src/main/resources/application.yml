@@ -1,0 +1,3 @@
+csv:
+  download:
+    baseUrl: ${csvDownloadBaseUrl:https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=}
