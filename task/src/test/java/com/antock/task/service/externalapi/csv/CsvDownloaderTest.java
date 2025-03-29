@@ -3,8 +3,7 @@ package com.antock.task.service.externalapi.csv;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +23,16 @@ public class CsvDownloaderTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         csvDownloader = new CsvDownloader(restTemplate);
+
+        // baseUrl 필드 수동 주입
+        var baseUrlField = CsvDownloader.class.getDeclaredFields();
+        try {
+            var field = CsvDownloader.class.getDeclaredField("baseUrl");
+            field.setAccessible(true);
+            field.set(csvDownloader, "https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -32,17 +41,21 @@ public class CsvDownloaderTest {
         // given
         String siDo = "서울특별시";
         String guGun = "강남구";
-        String fileName = String.format("통신판매업자_%s_%s.csv", siDo, guGun);
-        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
-        String baseUrl = "https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=";
-        String fullUrl = baseUrl + encodedFileName;
+        String fileName = String.format("통신판매사업자_%s_%s.csv", siDo, guGun);
+        String fullUrl = "https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=" + fileName;
 
-        // 테스트용 CSV 내용
         String expectedCsvContent = "id,name\n1,테스트";
-        ResponseEntity<byte[]> responseEntity = new ResponseEntity<>(
-                expectedCsvContent.getBytes(StandardCharsets.UTF_8), HttpStatus.OK);
 
-        when(restTemplate.getForEntity(fullUrl, byte[].class)).thenReturn(responseEntity);
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.setContentType(MediaType.valueOf("application/x-msdownload"));
+        ResponseEntity<byte[]> responseEntity = new ResponseEntity<>(
+                expectedCsvContent.getBytes(Charset.forName("EUC-KR")),
+                responseHeaders,
+                HttpStatus.OK
+        );
+
+        when(restTemplate.exchange(eq(fullUrl), eq(HttpMethod.GET), any(HttpEntity.class), eq(byte[].class)))
+                .thenReturn(responseEntity);
 
         // when
         String actualContent = csvDownloader.downloadCsv(siDo, guGun);
@@ -57,21 +70,20 @@ public class CsvDownloaderTest {
         // given
         String siDo = "서울광역시";
         String guGun = "강남남구";
-        String fileName = String.format("통신판매업자_%s_%s.csv", siDo, guGun);
-        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
-        String baseUrl = "https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=";
-        String fullUrl = baseUrl + encodedFileName;
+        String fileName = String.format("통신판매사업자_%s_%s.csv", siDo, guGun);
+        String fullUrl = "https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=" + fileName;
 
-        // 실패 케이스: 404 NOT_FOUND 응답 (body는 null)
-        ResponseEntity<byte[]> responseEntity = new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
-        when(restTemplate.getForEntity(fullUrl, byte[].class)).thenReturn(responseEntity);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_HTML);
+        ResponseEntity<byte[]> responseEntity = new ResponseEntity<>(null, headers, HttpStatus.NOT_FOUND);
 
-        // when
-        // then : 예외가 발생하는지 검증
+        when(restTemplate.exchange(eq(fullUrl), eq(HttpMethod.GET), any(HttpEntity.class), eq(byte[].class)))
+                .thenReturn(responseEntity);
+
+        // when + then
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             csvDownloader.downloadCsv(siDo, guGun);
         });
         assertTrue(exception.getMessage().contains("CSV 파일 다운로드 실패"));
     }
 }
-

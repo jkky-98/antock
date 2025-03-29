@@ -1,16 +1,20 @@
 package com.antock.task.service.externalapi.csv;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class CsvDownloader {
 
     private final RestTemplate restTemplate;
@@ -27,20 +31,43 @@ public class CsvDownloader {
     public String downloadCsv(String siDo, String guGun) {
         // 기본 URL (파일 다운로드 URL)
         // 파일 이름 생성: "통신판매업자_{시/도}_{구/군}.csv"
-        String fileName = String.format("통신판매업자_%s_%s.csv", siDo, guGun);
-        // 파일명을 퍼센트 인코딩 (UTF-8)
-        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
+        String fileName = String.format("통신판매사업자_%s_%s.csv", siDo, guGun);
         // 전체 URL 생성
-        String fullUrl = baseUrl + encodedFileName;
+        String fullUrl = baseUrl + fileName;
+
+        log.info("[downloadCsv] fullUrl : {}", fullUrl);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Accept", "*/*");
+        headers.set("Accept-Encoding", "gzip, deflate, br");
+        headers.set("User-Agent", "Mozilla/5.0");
+
+        HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
 
         // GET 요청으로 CSV 파일 데이터(byte[])를 수신
-        ResponseEntity<byte[]> response = restTemplate.getForEntity(fullUrl, byte[].class);
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                fullUrl,
+                HttpMethod.GET,
+                requestEntity,
+                byte[].class
+        );
 
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            // byte 배열을 UTF-8 문자열로 변환하여 반환
-            return new String(response.getBody(), StandardCharsets.UTF_8);
+        MediaType contentType = response.getHeaders().getContentType();
+
+        if (response.getStatusCode().is2xxSuccessful()
+                && response.getBody() != null
+                && contentType != null
+                && (MediaType.TEXT_PLAIN.isCompatibleWith(contentType)
+                || MediaType.valueOf("text/csv").isCompatibleWith(contentType)
+                || MediaType.APPLICATION_OCTET_STREAM.isCompatibleWith(contentType))
+                || MediaType.valueOf("application/x-msdownload").isCompatibleWith(contentType)) {
+
+            return new String(Objects.requireNonNull(response.getBody()), Charset.forName("EUC-KR"));
         } else {
-            throw new RuntimeException("CSV 파일 다운로드 실패: " + response.getStatusCode());
+            log.error("[downloadCsv] CSV 파일 다운로드 실패 : 상태={}, Content-Type={}", response.getStatusCode(), contentType);
+            throw new RuntimeException("CSV 파일 다운로드 실패: 상태=" + response.getStatusCode()
+                    + ", Content-Type=" + contentType);
         }
+
     }
 }
