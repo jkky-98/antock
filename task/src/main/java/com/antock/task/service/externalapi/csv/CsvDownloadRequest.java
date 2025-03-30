@@ -14,7 +14,7 @@ public class CsvDownloadRequest {
     private String businessRegiNumber;
     // 통신 판매 번호
     @CsvBindByName(column = "통신판매번호")
-    private int teleSalesNumber;
+    private String teleSalesNumber;
 
     @CsvBindByName(column = "법인여부")
     private String corporationType;

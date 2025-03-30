@@ -1,7 +1,9 @@
 package com.antock.task.service.externalapi.csv;
 
 import com.antock.task.controller.dto.TeleSalesSaveRequest;
+import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
+import com.opencsv.enums.CSVReaderNullFieldIndicator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -18,21 +20,30 @@ public class CsvParser {
 
     public List<CsvDownloadRequest> parse(TeleSalesSaveRequest request) {
         String csvStringData = csvDownloader.downloadCsv(request.getCity(), request.getDistrict());
-        // toDo : String -> List CsvDownloadRequest 전환 작업 필요
-        log.info("csvString : {}", csvStringData);
 
         StringReader reader = new StringReader(csvStringData);
-        List<CsvDownloadRequest> allRows = new CsvToBeanBuilder<CsvDownloadRequest>(reader)
+
+        CsvToBean<CsvDownloadRequest> csvToBean = new CsvToBeanBuilder<CsvDownloadRequest>(reader)
                 .withType(CsvDownloadRequest.class)
                 .withSkipLines(0)
                 .withIgnoreLeadingWhiteSpace(true)
-                .build()
-                .parse();
+                .withFieldAsNull(CSVReaderNullFieldIndicator.EMPTY_SEPARATORS)
+                .withThrowExceptions(false)
+                .build();
+
+        csvToBean.getCapturedExceptions().forEach(ex -> {
+            log.warn("[CsvParser] CSV 파싱 실패 (line {}): {}", ex.getLineNumber(), ex.getMessage());
+        });
+
+        List<CsvDownloadRequest> allRows = csvToBean.parse();
 
         // "법인" 필터링 후 리턴
-        return allRows.stream()
+        List<CsvDownloadRequest> filtered = allRows.stream()
                 .filter(row -> "법인".equals(row.getCorporationType()))
                 .toList();
 
+        log.info("[CsvParser] CSV 파싱 완료. 전체 데이터 수() : {}", filtered.size());
+
+        return filtered;
     }
 }
