@@ -1,7 +1,6 @@
 package com.antock.task.controller;
 
 import com.antock.task.controller.dto.TeleSalesSaveRequest;
-import com.antock.task.domain.TeleSalesInfo;
 import com.antock.task.service.TeleSalesInfoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
