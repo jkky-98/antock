@@ -33,15 +33,16 @@ public class CorpNumParserImpl implements CorpNumParser {
 
     @Override
     public String parse(String businessRegiNumber) {
-
+        log.info("businessRegiNumber Decoded: {}", businessRegiNumber);
         businessRegiNumber = businessRegiNumber.replaceAll("-", "");
+        log.info("businessRegiNumber Incoded: {}", businessRegiNumber);
 
         String rawUrl = BASE_URL + ENDPOINT +
                 "?serviceKey=" + key +
                 "&pageNo=" + PAGENO +
                 "&numOfRows=" + NUMOFROWS +
                 "&resultType=" + RESULT_TYPE +
-                "&brno=" + businessRegiNumber.replaceAll("-", "");
+                "&brno=" + businessRegiNumber;
 
         URI requestUri = URI.create(rawUrl);
 
@@ -71,6 +72,7 @@ public class CorpNumParserImpl implements CorpNumParser {
             }
         } catch (Exception e) {
             log.error("[CorpNumParser] 예외 발생", e);
+            log.error("[CorpNumParser] 예외 파싱 URL : {}", requestUri);
         }
 
         return null; // 실패 시 null

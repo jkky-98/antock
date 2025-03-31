@@ -21,7 +21,7 @@ public class TeleSalesInfoImportController {
     @PostMapping("/save")
     public ResponseEntity<?> saveTeleSalesInfo(
             @RequestBody TeleSalesSaveRequest request
-    ) throws UnsupportedEncodingException {
+    ) {
         log.info("request : {}", request);
         teleSalesInfoService.save(request);
         return ResponseEntity.ok().build();

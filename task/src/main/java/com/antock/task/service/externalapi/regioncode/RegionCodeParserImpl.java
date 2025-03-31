@@ -36,7 +36,9 @@ public class RegionCodeParserImpl implements RegionCodeParser{
     @Override
     public String parse(String corpAddress) {
 
-        String corpAddressPrefix = corpAddress.split("\\*")[0].strip();
+        String[] corpAddressSplit = corpAddress.split(" ");
+        String corpAddressPrefix = corpAddressSplit[0] + " " + corpAddressSplit[1] + " " + corpAddressSplit[2];
+
         String encodedKeyword = URLEncoder.encode(corpAddressPrefix, StandardCharsets.UTF_8);
         String rawUrl = BASE_URL +
                 "?confmKey=" + key +
@@ -59,18 +61,21 @@ public class RegionCodeParserImpl implements RegionCodeParser{
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 JsonNode root = mapper.readTree(response.getBody());
-                JsonNode admCdNode = root
-                        .path("results")
-                        .path("juso")
-                        .get(0)
-                        .path("admCd");
+                JsonNode jusoArray = root.path("results").path("juso");
 
-                String admCd = admCdNode.asText();
-                log.info("[RegionCodeParser] 추출된 행정구역 코드: {}", admCd);
-                return admCd;
+                if (jusoArray.isArray() && !jusoArray.isEmpty()) {
+                    JsonNode admCdNode = jusoArray.get(0).path("admCd");
+                    String admCd = admCdNode.asText();
+                    log.info("[RegionCodeParser] 추출된 행정구역 코드: {}", admCd);
+                    return admCd;
+                } else {
+                    log.warn("[RegionCodeParser] juso 배열에 결과가 없습니다.");
+                    return "";
+                }
             } else {
                 log.warn("[RegionCodeParser] 응답 실패. 상태코드: {}", response.getStatusCode());
             }
+
         } catch (Exception e) {
             log.error("[RegionCodeParser] 예외 발생", e);
         }
