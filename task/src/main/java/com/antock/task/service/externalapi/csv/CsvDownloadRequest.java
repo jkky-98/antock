@@ -18,4 +18,7 @@ public class CsvDownloadRequest {
 
     @CsvBindByName(column = "법인여부")
     private String corporationType;
+
+    @CsvBindByName(column = "사업장소재지")
+    private String corpAddress;
 }

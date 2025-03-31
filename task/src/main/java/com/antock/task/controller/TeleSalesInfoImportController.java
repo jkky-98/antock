@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.UnsupportedEncodingException;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -19,7 +21,7 @@ public class TeleSalesInfoImportController {
     @PostMapping("/save")
     public ResponseEntity<?> saveTeleSalesInfo(
             @RequestBody TeleSalesSaveRequest request
-    ) {
+    ) throws UnsupportedEncodingException {
         log.info("request : {}", request);
         teleSalesInfoService.save(request);
         return ResponseEntity.ok().build();

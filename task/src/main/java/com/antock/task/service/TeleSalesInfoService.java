@@ -1,15 +1,16 @@
 package com.antock.task.service;
 
 import com.antock.task.controller.dto.TeleSalesSaveRequest;
-import com.antock.task.domain.TeleSalesInfo;
 import com.antock.task.service.externalapi.corpnum.CorpNumParser;
 import com.antock.task.service.externalapi.csv.CsvDownloadRequest;
 import com.antock.task.service.externalapi.csv.CsvParser;
+import com.antock.task.service.externalapi.regioncode.RegionCodeParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 @Service
@@ -19,14 +20,17 @@ public class TeleSalesInfoService {
 
     private final CsvParser csvParser;
     private final CorpNumParser corpNumParser;
+    private final RegionCodeParser regionCodeParser;
 
     @Transactional
-    public void save(TeleSalesSaveRequest request) {
+    public void save(TeleSalesSaveRequest request) throws UnsupportedEncodingException {
         List<CsvDownloadRequest> csvData = csvParser.parse(request);
 
         for (CsvDownloadRequest csvDatum : csvData) {
             String parseResult = corpNumParser.parse(csvDatum.getBusinessRegiNumber());
             log.info("parseResult : {}", parseResult);
+            String regionCode = regionCodeParser.parse(csvDatum.getCorpAddress());
+            log.info("regionCode : {}", regionCode);
             break;
         }
     }
