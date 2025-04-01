@@ -1,14 +1,14 @@
 csv:
   download:
-    baseUrl: ${csvDownloadBaseUrl:https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=}
+    baseUrl: ${csvDownloadBaseUrl}
 
 openapi:
   api:
-    key: ${openApiKey:y1AF0a1VYjWFZdiiD5AX9EryBUpASA1AhXouh98R5jwUfnXFkaBZOkT8AebocKnYICAHsi8CpOuco9VTew%2B4TQ%3D%3D}
+    key: ${openApiKey}
 
 juso:
   searchapi:
-    key: ${jusoSearchApiKey:devU01TX0FVVEgyMDI1MDMyNTE1MTgxMTExNTU3NzE=}
+    key: ${jusoSearchApiKey}
 
 spring:
   datasource:
