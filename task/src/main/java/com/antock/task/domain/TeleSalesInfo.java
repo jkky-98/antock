@@ -1,5 +1,6 @@
 package com.antock.task.domain;
 
+import com.antock.task.domain.base.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,7 +13,7 @@ import lombok.*;
 @ToString
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class TeleSalesInfo {
+public class TeleSalesInfo extends BaseTimeEntity {
 
     @Id
     @GeneratedValue
