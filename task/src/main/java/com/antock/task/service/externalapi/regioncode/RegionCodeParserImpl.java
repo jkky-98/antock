@@ -1,5 +1,6 @@
 package com.antock.task.service.externalapi.regioncode;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -36,22 +36,21 @@ public class RegionCodeParserImpl implements RegionCodeParser{
     @Override
     public String parse(String corpAddress) {
 
-        String[] corpAddressSplit = corpAddress.split(" ");
-        String corpAddressPrefix = corpAddressSplit[0] + " " + corpAddressSplit[1] + " " + corpAddressSplit[2];
-
-        String encodedKeyword = URLEncoder.encode(corpAddressPrefix, StandardCharsets.UTF_8);
-        String rawUrl = BASE_URL +
-                "?confmKey=" + key +
-                "&currentPage=" + CURRENT_PAGE +
-                "&countPerPage=" + COUNT_PER_PAGE +
-                "&resultType=" + RESULT_TYPE +
-                "&keyword=" + encodedKeyword;
-
-        URI requestUri = URI.create(rawUrl);
-
-        log.info("[RegionCodeParser] 요청 URL : {}", requestUri);
-
         try {
+            String corpAddressPrefix = getCorpAddressPrefix(corpAddress);
+
+            String encodedKeyword = URLEncoder.encode(corpAddressPrefix, StandardCharsets.UTF_8);
+            String rawUrl = BASE_URL +
+                    "?confmKey=" + key +
+                    "&currentPage=" + CURRENT_PAGE +
+                    "&countPerPage=" + COUNT_PER_PAGE +
+                    "&resultType=" + RESULT_TYPE +
+                    "&keyword=" + encodedKeyword;
+
+            URI requestUri = URI.create(rawUrl);
+
+            log.info("[RegionCodeParser] 요청 URL : {}", requestUri);
+
             ResponseEntity<String> response = restTemplate.exchange(
                     requestUri,
                     HttpMethod.GET,
@@ -76,10 +75,24 @@ public class RegionCodeParserImpl implements RegionCodeParser{
                 log.warn("[RegionCodeParser] 응답 실패. 상태코드: {}", response.getStatusCode());
             }
 
+        } catch (JsonParseException e) {
+            log.error("[RegionCodeParser] 요청 리미트 초과", e);
+        } catch (WrongAddressException e) {
+            log.warn("[RegionCodeParser] 잘못된 주소 입력입니다. {}", e.getMessage());
+            return "N/A";
         } catch (Exception e) {
             log.error("[RegionCodeParser] 예외 발생", e);
         }
 
-        return "";
+        return "N/A";
+    }
+
+    private static String getCorpAddressPrefix(String corpAddress) {
+        try {
+            String[] corpAddressSplit = corpAddress.split(" ");
+            return corpAddressSplit[0] + " " + corpAddressSplit[1] + " " + corpAddressSplit[2];
+        } catch (Exception e) {
+            throw new WrongAddressException("[RegionCodeParser] Address 주소가 비어있거나 잘못된 형식입니다.");
+        }
     }
 }

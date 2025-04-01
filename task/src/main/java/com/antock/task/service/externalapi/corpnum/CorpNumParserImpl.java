@@ -1,5 +1,6 @@
 package com.antock.task.service.externalapi.corpnum;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,9 +34,7 @@ public class CorpNumParserImpl implements CorpNumParser {
 
     @Override
     public String parse(String businessRegiNumber) {
-        log.info("businessRegiNumber Decoded: {}", businessRegiNumber);
         businessRegiNumber = businessRegiNumber.replaceAll("-", "");
-        log.info("businessRegiNumber Incoded: {}", businessRegiNumber);
 
         String rawUrl = BASE_URL + ENDPOINT +
                 "?serviceKey=" + key +
@@ -70,11 +69,13 @@ public class CorpNumParserImpl implements CorpNumParser {
             } else {
                 log.warn("[CorpNumParser] 응답 실패. 상태코드: {}", response.getStatusCode());
             }
+        } catch (JsonParseException e) {
+            log.error("[CorpNumParser] 요청 리미트 초과", e);
         } catch (Exception e) {
             log.error("[CorpNumParser] 예외 발생", e);
             log.error("[CorpNumParser] 예외 파싱 URL : {}", requestUri);
         }
 
-        return null; // 실패 시 null
+        return "N/A"; // 실패 시 N/A
     }
 }
