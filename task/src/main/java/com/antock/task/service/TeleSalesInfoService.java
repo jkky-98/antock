@@ -1,6 +1,7 @@
 package com.antock.task.service;
 
 import com.antock.task.controller.dto.TeleSalesSaveRequest;
+import com.antock.task.controller.dto.TeleSalesSaveResponse;
 import com.antock.task.domain.TeleSalesInfo;
 import com.antock.task.repository.TeleSalesInfoRepository;
 import com.antock.task.service.externalapi.corpnum.CorpNumParser;
@@ -32,7 +33,7 @@ public class TeleSalesInfoService {
     private final TeleSalesInfoRepository teleSalesInfoRepository;
 
     @Transactional
-    public void save(TeleSalesSaveRequest request) {
+    public TeleSalesSaveResponse save(TeleSalesSaveRequest request) {
         List<CsvDownloadRequest> csvData = csvParser.parse(request);
 
         int csvDataSize = csvData.size();
@@ -95,6 +96,10 @@ public class TeleSalesInfoService {
         log.info("저장된 TeleSalesInfo 수: {}", savedCount.get());
         log.info("누락된 수 (중복/실패): {}", failedCount);
 
+        TeleSalesSaveResponse response = new TeleSalesSaveResponse();
+        response.setSavedCount(savedCount.get());
+        response.setFailedCount(failedCount);
+        return response;
     }
 
 }
