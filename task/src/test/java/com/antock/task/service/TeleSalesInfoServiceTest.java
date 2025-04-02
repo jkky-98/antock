@@ -1,12 +1,9 @@
 package com.antock.task.service;
 
 import com.antock.task.controller.dto.TeleSalesSaveRequest;
-import com.antock.task.domain.TeleSalesInfo;
-import com.antock.task.repository.TeleSalesInfoRepository;
-import com.antock.task.service.externalapi.corpnum.CorpNumParser;
+import com.antock.task.controller.dto.TeleSalesSaveResponse;
 import com.antock.task.service.externalapi.csv.CsvDownloadRequest;
 import com.antock.task.service.externalapi.csv.CsvParser;
-import com.antock.task.service.externalapi.regioncode.RegionCodeParser;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,89 +12,93 @@ import org.mockito.Mock;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(SpringExtension.class)
-public class TeleSalesInfoServiceTest {
+class TeleSalesInfoServiceTest {
 
     @Mock
     private CsvParser csvParser;
 
     @Mock
-    private CorpNumParser corpNumParser;
-
-    @Mock
-    private RegionCodeParser regionCodeParser;
-
-    @Mock
-    private TeleSalesInfoRepository teleSalesInfoRepository;
+    private TeleSalesInfoSaveAsyncWorker teleSalesInfoSaveAsyncWorker;
 
     @InjectMocks
     private TeleSalesInfoService teleSalesInfoService;
 
     @Test
-    @DisplayName("TeleSalesInfoService save() :: 성공 로직 테스트")
-    void saveTeleSalesInfos() {
+    @DisplayName("save() :: CSV 요청 파싱 후 정상 저장된 수를 반환한다")
+    void save_ReturnsSuccessCount() {
         // given
-        CsvDownloadRequest csvRequest = new CsvDownloadRequest();
-        csvRequest.setTeleSalesName("antock");
-        csvRequest.setTeleSalesNumber("123456");
-        csvRequest.setCorpAddress("수원시 영통구 인계동");
-        csvRequest.setCorporationType("법인");
-        csvRequest.setBusinessRegiNumber("123-45-67890");
+        CsvDownloadRequest request1 = new CsvDownloadRequest();
+        request1.setBusinessRegiNumber("1234567890");
+        CsvDownloadRequest request2 = new CsvDownloadRequest();
+        request2.setBusinessRegiNumber("2234567890");
 
-        List<CsvDownloadRequest> csvList = List.of(csvRequest);
+        List<CsvDownloadRequest> csvList = List.of(request1, request2);
 
         when(csvParser.parse(any())).thenReturn(csvList);
-        when(teleSalesInfoRepository.existsByBusinessRegiNumber("123-45-67890")).thenReturn(false);
-        when(corpNumParser.parse("123-45-67890")).thenReturn("0987654321");
-        when(regionCodeParser.parse("수원시 영통구 인계동")).thenReturn("0987654321");
+        when(teleSalesInfoSaveAsyncWorker.saveOne(eq(request1), any())).thenAnswer(invocation -> {
+            AtomicInteger count = invocation.getArgument(1);
+            count.incrementAndGet();
+            return CompletableFuture.completedFuture(null);
+        });
+        when(teleSalesInfoSaveAsyncWorker.saveOne(eq(request2), any())).thenAnswer(invocation -> {
+            AtomicInteger count = invocation.getArgument(1);
+            count.incrementAndGet();
+            return CompletableFuture.completedFuture(null);
+        });
 
         // when
-        teleSalesInfoService.save(new TeleSalesSaveRequest());
+        TeleSalesSaveResponse response = teleSalesInfoService.save(new TeleSalesSaveRequest());
 
         // then
-        verify(teleSalesInfoRepository, times(1)).save(any(TeleSalesInfo.class));
+        assertEquals(2, response.getSavedCount());
+        assertEquals(0, response.getFailedCount());
     }
 
-    @DisplayName("TeleSalesInfoService save() :: 이미 존재하는 사업자등록번호는 저장되지 않음 검증")
     @Test
-    void shouldNotSaveIfBusinessRegiNumberExists() {
+    @DisplayName("save() :: 일부 저장 실패 시 실패 건수를 반환한다")
+    void save_ReturnsPartialFailCount() {
         // given
-        CsvDownloadRequest csvRequest = new CsvDownloadRequest();
-        csvRequest.setBusinessRegiNumber("123-45-67890");
-        csvRequest.setCorpAddress("수원시 영통구 인계동");
-        csvRequest.setTeleSalesName("중복회사");
-        csvRequest.setTeleSalesNumber("999");
+        CsvDownloadRequest request1 = new CsvDownloadRequest();
+        request1.setBusinessRegiNumber("1234567890");
+        CsvDownloadRequest request2 = new CsvDownloadRequest();
+        request2.setBusinessRegiNumber("2234567890");
 
-        when(csvParser.parse(any())).thenReturn(List.of(csvRequest));
-        when(teleSalesInfoRepository.existsByBusinessRegiNumber("123-45-67890")).thenReturn(true); // 중복
+        List<CsvDownloadRequest> csvList = List.of(request1, request2);
+
+        when(csvParser.parse(any())).thenReturn(csvList);
+
+        when(teleSalesInfoSaveAsyncWorker.saveOne(eq(request1), any())).thenAnswer(invocation -> {
+            AtomicInteger count = invocation.getArgument(1);
+            count.incrementAndGet();
+            return CompletableFuture.completedFuture(null);
+        });
+        when(teleSalesInfoSaveAsyncWorker.saveOne(eq(request2), any())).thenReturn(
+                CompletableFuture.failedFuture(new RuntimeException("저장 실패"))
+        );
+
         // when
-        teleSalesInfoService.save(new TeleSalesSaveRequest());
+        TeleSalesSaveResponse response = teleSalesInfoService.save(new TeleSalesSaveRequest());
 
         // then
-        verify(teleSalesInfoRepository, never()).save(any());
+        assertEquals(1, response.getSavedCount());
+        assertEquals(1, response.getFailedCount());
     }
 
-    @DisplayName("TeleSalesInfoService save() :: CorpNumParser 예외 발생 시 저장되지 않음 검증")
     @Test
-    void shouldNotSaveWhenCorpNumParseFails() {
-        // given
-        CsvDownloadRequest csvRequest = new CsvDownloadRequest();
-        csvRequest.setBusinessRegiNumber("123-45-67890");
-        csvRequest.setCorpAddress("서울 강남구");
+    @DisplayName("save() :: CSV 데이터가 없는 경우 결과는 모두 실패로 처리됨")
+    void save_EmptyCsvList_ReturnsZeroSuccess() {
+        when(csvParser.parse(any())).thenReturn(List.of());
 
-        when(csvParser.parse(any())).thenReturn(List.of(csvRequest));
-        when(teleSalesInfoRepository.existsByBusinessRegiNumber(any())).thenReturn(false);
-        when(corpNumParser.parse(any())).thenThrow(new RuntimeException("파싱 실패"));
+        TeleSalesSaveResponse response = teleSalesInfoService.save(new TeleSalesSaveRequest());
 
-        // when
-        teleSalesInfoService.save(new TeleSalesSaveRequest());
-
-        // then
-        verify(teleSalesInfoRepository, never()).save(any());
+        assertEquals(0, response.getSavedCount());
+        assertEquals(0, response.getFailedCount());
     }
-
 }
