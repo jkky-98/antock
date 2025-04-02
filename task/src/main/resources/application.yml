@@ -1,6 +1,6 @@
 csv:
   download:
-    baseUrl: ${csvDownloadBaseUrl}
+    baseUrl: https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=
 
 openapi:
   api:
