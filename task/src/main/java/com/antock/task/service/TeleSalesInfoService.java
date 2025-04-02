@@ -67,8 +67,6 @@ public class TeleSalesInfoService {
                     log.info("저장될 TeleSalesInfo : {}", teleSalesInfo);
                     teleSalesInfoRepository.save(teleSalesInfo);
                     savedCount.incrementAndGet(); // 저장 성공 시 카운트 증가
-                } catch (DataIntegrityViolationException e) {
-                    log.warn("중복된 사업자 등록 번호로 인해 저장 실패 (무시), 무시된 사업자 등록 번호: {}", csvDatum.getBusinessRegiNumber());
                 } catch (Exception e) {
                     // parse() 등 다른 부분에서 발생한 예외 처리
                     log.error("CSV 데이터 처리 중 예외 발생, 사업자 등록 번호: {} - 예외: {}",
