@@ -1,6 +1,7 @@
 package com.antock.task.repository;
 
 import com.antock.task.domain.TeleSalesInfo;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -14,6 +15,7 @@ public class TeleSalesInfoRepositoryTest {
     private TeleSalesInfoRepository teleSalesInfoRepository;
 
     @Test
+    @DisplayName("TeleSalesInfoRepository existsByBusinessRegiNumber 성공 케이스 테스트")
     void trueWhenBusinessRegiNumberExists() {
         // given
         String businessRegiNumber = "123-45-67890";
@@ -29,6 +31,7 @@ public class TeleSalesInfoRepositoryTest {
     }
 
     @Test
+    @DisplayName("TeleSalesInfoRepository existsByBusinessRegiNumber 실패 케이스 테스트")
     void falseWhenBusinessRegiNumberDoesNotExist() {
         // given
         String nonExistBusinessRegiNumber = "123-45-67890";

@@ -5,39 +5,26 @@ import static org.mockito.Mockito.*;
 
 import java.nio.charset.Charset;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
+@ExtendWith(MockitoExtension.class)
 public class CsvDownloaderTest {
 
     @Mock
     private RestTemplate restTemplate;
 
+    @InjectMocks
     private CsvDownloader csvDownloader;
-
-    @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-        csvDownloader = new CsvDownloader(restTemplate);
-
-        // baseUrl 필드 수동 주입
-        var baseUrlField = CsvDownloader.class.getDeclaredFields();
-        try {
-            var field = CsvDownloader.class.getDeclaredField("baseUrl");
-            field.setAccessible(true);
-            field.set(csvDownloader, "https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     @Test
     @DisplayName("DownloadCsv 성공 검증 단위테스트")
-    public void testDownloadCsv_success() {
+    void shouldDownloadCsvSuccessfully() throws Exception {
         // given
         String siDo = "서울특별시";
         String guGun = "강남구";
@@ -58,6 +45,9 @@ public class CsvDownloaderTest {
                 .thenReturn(responseEntity);
 
         // when
+        // baseUrl 수동 주입
+        injectBaseUrl(csvDownloader);
+
         String actualContent = csvDownloader.downloadCsv(siDo, guGun);
 
         // then
@@ -66,7 +56,7 @@ public class CsvDownloaderTest {
 
     @Test
     @DisplayName("DownloadCsv 예외 검증 단위테스트")
-    public void testDownloadCsv_failure() {
+    void shouldThrowExceptionWhenDownloadFails() throws Exception {
         // given
         String siDo = "서울광역시";
         String guGun = "강남남구";
@@ -81,9 +71,18 @@ public class CsvDownloaderTest {
                 .thenReturn(responseEntity);
 
         // when + then
+        injectBaseUrl(csvDownloader);
+
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             csvDownloader.downloadCsv(siDo, guGun);
         });
+
         assertTrue(exception.getMessage().contains("CSV 파일 다운로드 실패"));
+    }
+
+    private void injectBaseUrl(CsvDownloader downloader) throws Exception {
+        var field = CsvDownloader.class.getDeclaredField("baseUrl");
+        field.setAccessible(true);
+        field.set(downloader, "https://www.ftc.go.kr/www/downloadBizComm.do?atchFileUrl=dataopen&atchFileNm=");
     }
 }
